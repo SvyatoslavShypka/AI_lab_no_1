@@ -31,8 +31,17 @@ def time_diff(end_time, start_time):
 class Edge:
     def __init__(self, name, arrive_time, leave_time, start_x, start_y, end_x, end_y):
         self.name = name
-        self.arrive_time = arrive_time
-        self.leave_time = leave_time
+
+        # 🔧 Konwersja arrive_time i leave_time na datetime.time
+        if isinstance(arrive_time, str):
+            self.arrive_time = datetime.strptime(arrive_time, "%H:%M:%S").time()
+        else:
+            self.arrive_time = arrive_time
+
+        if isinstance(leave_time, str):
+            self.leave_time = datetime.strptime(leave_time, "%H:%M:%S").time()
+        else:
+            self.leave_time = leave_time
         self.start_x = start_x
         self.start_y = start_y
         self.end_x = end_x
@@ -46,11 +55,20 @@ class Graph:
 
     def min_time_cost(self, start_node, end_node, time):
         possible_edges = self.edges[start_node, end_node]
-        edge_found_index = search(possible_edges, 0, len(possible_edges)-1, time)
+        edge_found_index = search(possible_edges, 0, len(possible_edges) - 1, time)
+
         if edge_found_index != -1:
             edge_found = possible_edges[edge_found_index]
+            # print(
+            #     f"🔎 Debug: found edge {edge_found.name} with times {edge_found.leave_time} → {edge_found.arrive_time}")
+
+            # if not isinstance(edge_found.arrive_time, dt.time):
+            #     print("⚠️ ERROR: arrive_time is not a datetime.time object!")
+
             if edge_found.leave_time >= time:
-                return time_diff(edge_found.arrive_time, time), (edge_found.name, edge_found.leave_time, edge_found.arrive_time)
+                return time_diff(edge_found.arrive_time, time), (
+                edge_found.name, edge_found.leave_time, edge_found.arrive_time)
+
         return None
 
     def min_transfer_cost(self, start_node, end_node, time, cur_line):
@@ -82,11 +100,14 @@ class PriorityQueue:
 def load_data(file):
     df = pd.read_csv(
         file,
-        parse_dates=['departure_time', 'arrival_time'],
-        date_parser=lambda x: pd.to_datetime(x, format='%H:%M:%S').time,
-        delimiter=',', header=0, encoding='utf-8',
+        delimiter=',',
+        header=0,
+        encoding='utf-8',
         low_memory=False
     )
+
+    df['departure_time'] = pd.to_datetime(df['departure_time'], format='%H:%M:%S').dt.time
+    df['arrival_time'] = pd.to_datetime(df['arrival_time'], format='%H:%M:%S').dt.time
 
     graph = Graph()
 
@@ -99,7 +120,11 @@ def load_data(file):
         else:
             graph.nodes[start_stop] = [end_stop]
 
-        edge = Edge(row[2], row[5], row[4], row[7], row[8], row[9], row[10])
+        # #debug
+        # print(f"🔍 Wiersz danych: {row}")
+        # print(f"arrive_time: {row[2]}, leave_time: {row[4]}")
+
+        edge = Edge(row[2], row[4], row[3], row[7], row[8], row[9], row[10])
 
         if (start_stop, end_stop) in graph.edges.keys():
             graph.edges[(start_stop, end_stop)].append(edge)
@@ -108,6 +133,8 @@ def load_data(file):
 
     for row in graph.edges.values():
         row.sort(key=lambda x: x.leave_time)
+    #debug
+    # print("📌 Wczytane przystanki:", list(graph.nodes.keys()))
 
     return graph
 
@@ -219,17 +246,19 @@ def dijkstra_search(graph, start, goal, time):
                 front.put(neighbour, priority)
                 came_from[neighbour] = cur_stop, cost[1]
                 time_so_far[neighbour] = cost[1][2]
-
+    print(f"📌 Węzły w came_from: {list(came_from.keys())}")
     return came_from, cost_so_far
 
 
 def create_path(came_from, start, goal):
+    if goal not in came_from:
+        print(f"⚠️ Nie znaleziono ścieżki do: {goal}")
+        print(f"Znalezione węzły: {list(came_from.keys())}")  # Wypisuje znalezione węzły
+        return []
+
     current = goal
     path = []
     lines = []
-
-    if goal not in came_from:
-        return []
 
     while current != start:
         path.append(current)
@@ -266,4 +295,4 @@ def dijkstra(graph, start, goal, time):
 if __name__ == "__main__":
     # graph = load_data('connection_graph.csv')
     graph = load_data('testowy.csv')
-    dijkstra(graph, "obornicka", "berenta", datetime.time(20, 50))
+    dijkstra(graph, "paprotna", "pola", datetime.time(20, 50))
