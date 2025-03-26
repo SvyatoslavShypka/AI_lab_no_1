@@ -97,6 +97,35 @@ class PriorityQueue:
         return heapq.heappop(self.elements)[1]
 
 
+def safe_convert_time(value):
+
+    try:
+        return pd.to_datetime(fix_invalid_time(value), format='%H:%M:%S').time()
+    except ValueError:
+        print(f"⚠️ Błąd konwersji: {value}")  # Możesz usunąć, jeśli nie chcesz widzieć błędów
+        return None  # Ustawia brak wartości dla błędnych danych
+
+
+def fix_invalid_time(time_str):
+    """Naprawia błędne formaty godzin (np. 24:01:00 → 00:01:00)."""
+    try:
+        hours, minutes, seconds = map(int, time_str.split(':'))
+        if hours >= 24:
+            hours -= 24
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    except ValueError:
+        return "00:00:00"  # Domyślna wartość w przypadku błędu
+#
+#
+# def parse_time(time_str):
+#     """Konwertuje ciąg znaków na obiekt datetime.time."""
+#     try:
+#         time_str = fix_invalid_time(time_str)
+#         return datetime.strptime(time_str, "%H:%M:%S").time()
+#     except ValueError:
+#         return None
+
+
 def load_data(file):
     df = pd.read_csv(
         file,
@@ -105,9 +134,14 @@ def load_data(file):
         encoding='utf-8',
         low_memory=False
     )
+    # df["departure_time"] = df["departure_time"].apply(parse_time)
+    # df["arrival_time"] = df["arrival_time"].apply(parse_time)
 
-    df['departure_time'] = pd.to_datetime(df['departure_time'], format='%H:%M:%S').dt.time
-    df['arrival_time'] = pd.to_datetime(df['arrival_time'], format='%H:%M:%S').dt.time
+    df['departure_time'] = df['departure_time'].apply(safe_convert_time)
+    df['arrival_time'] = df['arrival_time'].apply(safe_convert_time)
+
+    # df['departure_time'] = pd.to_datetime(df['departure_time'], format='%H:%M:%S').dt.time
+    # df['arrival_time'] = pd.to_datetime(df['arrival_time'], format='%H:%M:%S').dt.time
 
     graph = Graph()
 
@@ -293,6 +327,6 @@ def dijkstra(graph, start, goal, time):
 
 
 if __name__ == "__main__":
-    # graph = load_data('connection_graph.csv')
-    graph = load_data('testowy.csv')
-    dijkstra(graph, "paprotna", "pola", datetime.time(20, 50))
+    graph = load_data('connection_graph.csv')
+    # graph = load_data('testowy.csv')
+    dijkstra(graph, "kwiska", "pl. grunwaldzki", datetime.time(10, 00))
