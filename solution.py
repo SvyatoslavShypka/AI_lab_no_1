@@ -4,6 +4,7 @@ import datetime as dt
 import datetime
 import time as t
 import geopy.distance
+import networkx as nx
 
 
 def search(arr, low, high, x):
@@ -89,45 +90,100 @@ def fix_invalid_time(time_str):
     except ValueError:
         return "00:00:00"  # Default for completely incorrect values
 
-def load_data(file):
-    df = pd.read_csv("connection_graph.csv", index_col=0, low_memory=False)
+# def load_data(file):
+#     df = pd.read_csv("connection_graph.csv", index_col=0, low_memory=False)
+#
+#     # Fix invalid times
+#     df["departure_time"] = df["departure_time"].apply(fix_invalid_time)
+#     df["arrival_time"] = df["arrival_time"].apply(fix_invalid_time)
+#
+#     # Convert to datetime.time format
+#     df["departure_time"] = pd.to_datetime(df["departure_time"], format="%H:%M:%S").dt.time
+#     df["arrival_time"] = pd.to_datetime(df["arrival_time"], format="%H:%M:%S").dt.time
+#
+#     graph = Graph()
+#
+#     for _, row in df.iterrows():
+#         start_stop = str(row[6]).lower()
+#         end_stop = str(row[7]).lower()
+#
+#         if start_stop in graph.nodes.keys():
+#             graph.nodes[start_stop].append(end_stop)
+#         else:
+#             graph.nodes[start_stop] = [end_stop]
+#
+#         edge = Edge(
+#             row["line"],
+#             row["arrival_time"],
+#             row["departure_time"],
+#             row["start_stop_lat"],
+#             row["start_stop_lon"],
+#             row["end_stop_lat"],
+#             row["end_stop_lon"]
+#         )
+#
+#         if (start_stop, end_stop) in graph.edges.keys():
+#             graph.edges[(start_stop, end_stop)].append(edge)
+#         else:
+#             graph.edges[(start_stop, end_stop)] = [edge]
+#
+#     for row in graph.edges.values():
+#         row.sort(key=lambda x: x.leave_time)
+#
+#     #debug
+#     print("Start stops:", df['start_stop'].unique()[:10])  # First 10 unique values
+#     print("End stops:", df['end_stop'].unique()[:10])  # First 10 unique values
+#
+#     # print("Available nodes:", graph.nodes.keys())
+#     # print("Edges:", graph.edges.keys())
+#     if ("broniewskiego", "pola") in graph.edges:
+#         print("Edge exists!")
+#     else:
+#         print("Edge not found!")
+#     print("Nodes in graph:", list(graph.nodes.items())[:5])  # Print first 5 nodes
+#
+#     return graph
 
-    # Fix invalid times
-    df["departure_time"] = df["departure_time"].apply(fix_invalid_time)
-    df["arrival_time"] = df["arrival_time"].apply(fix_invalid_time)
 
-    # Convert to datetime.time format
-    df["departure_time"] = pd.to_datetime(df["departure_time"], format="%H:%M:%S").dt.time
-    df["arrival_time"] = pd.to_datetime(df["arrival_time"], format="%H:%M:%S").dt.time
+def load_data(file_path):
+    # Load CSV with all columns as strings to avoid mixed types issues
+    df = pd.read_csv(file_path, dtype=str)
 
-    graph = Graph()
+    # Strip whitespace from column names
+    df.columns = df.columns.str.strip()
 
+    # Debug: Print available columns
+    print("Columns in CSV:", df.columns.tolist())
+
+    # Ensure the required columns exist
+    required_columns = {"start_stop", "end_stop", "start_stop_lat", "start_stop_lon", "end_stop_lat", "end_stop_lon"}
+    if not required_columns.issubset(df.columns):
+        raise ValueError(f"Missing required columns in CSV: {required_columns - set(df.columns)}")
+
+    # Create a graph with stop names as nodes
+    graph = nx.DiGraph()
+
+    # Add nodes using stop names
     for _, row in df.iterrows():
-        start_stop = str(row[6]).lower()
-        end_stop = str(row[7]).lower()
+        start_stop = row["start_stop"].strip()
+        end_stop = row["end_stop"].strip()
 
-        if start_stop in graph.nodes.keys():
-            graph.nodes[start_stop].append(end_stop)
-        else:
-            graph.nodes[start_stop] = [end_stop]
+        graph.add_node(start_stop)
+        graph.add_node(end_stop)
 
-        edge = Edge(
-            row["line"],
-            row["arrival_time"],
-            row["departure_time"],
-            row["start_stop_lat"],
-            row["start_stop_lon"],
-            row["end_stop_lat"],
-            row["end_stop_lon"]
-        )
+    # Add edges with weights (travel times if available)
+    for _, row in df.iterrows():
+        start_stop = row["start_stop"].strip()
+        end_stop = row["end_stop"].strip()
 
-        if (start_stop, end_stop) in graph.edges.keys():
-            graph.edges[(start_stop, end_stop)].append(edge)
-        else:
-            graph.edges[(start_stop, end_stop)] = [edge]
+        # Try to add a weight based on departure and arrival time (optional)
+        try:
+            travel_time = pd.to_datetime(row["arrival_time"]) - pd.to_datetime(row["departure_time"])
+            travel_time_minutes = travel_time.total_seconds() / 60  # Convert to minutes
+        except:
+            travel_time_minutes = None  # If time parsing fails, set to None
 
-    for row in graph.edges.values():
-        row.sort(key=lambda x: x.leave_time)
+        graph.add_edge(start_stop, end_stop, weight=travel_time_minutes)
 
     return graph
 
@@ -140,34 +196,6 @@ def get_data():
         option = input("t - minimalizacja czasu dojazdu, p - minimalizacja liczby przesiadek")
 
         return start_stop, end_stop, option, datetime.datetime.strptime(time, "%H:%M").time()
-
-
-# def display_results(path, lines):
-#     ## get current stop name
-#     cur_stop = lines[0][0]
-#     print("Linia: " + str(cur_stop) + " Przystanek: " + str(path[0]) +
-#           " Odjazd: " + str(lines[0][1]))
-#     i = 2
-#     #start with number of changes: 0
-#     changes = 0
-#     ##loop through elements in lines array
-#     for elem in lines[2:]:
-#         ##when we have to change stop increment changes by 1
-#         if elem[0] != cur_stop:
-#             changes += 1
-#             cur_stop = elem[0]
-#             #print details about change to the user
-#             print("Przesiadka!")
-#             print("Linia: " + str(cur_stop) + " odjazd: " +
-#                   str(elem[1]) + " przystanek: " + str(path[i]))
-#         i += 1
-#     #print final info about the route
-#     print("Dojedziesz do celu o godzinie: " +
-#           str(lines[-1][2]) + " przystanek: " + str(path[-1]))
-#     time = time_diff(lines[-1][2], lines[0][1])
-#     print("Długość podrózy: " + str(time) + "min")
-#     print("Ilość przesiadek: " + str(changes))
-#     print("")
 
 
 def display_results(path, lines):
@@ -318,7 +346,8 @@ def dijkstra(graph, start, goal, time):
 
 if __name__ == "__main__":
     graph = load_data('connection_graph.csv')
-    dijkstra(graph, "kwiska", "most grunwaldzki", datetime.time(7, 52))
+    # dijkstra(graph, "kwiska", "most grunwaldzki", datetime.time(7, 52))
+    dijkstra(graph, "broniewskiego", "pola", datetime.time(7, 52))
 
     # df = pd.read_csv("connection_graph.csv", index_col=0, low_memory=False)
     # print(df.columns)  # Check actual column names
