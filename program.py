@@ -48,8 +48,12 @@ class Graph:
         self.edges[(edge.start, edge.end)].sort(key=lambda e: e.leave_time)  # Sortujemy po czasie odjazdu
 
     def get_neighbors(self, node):
-        return [edge for key, edges in self.edges.items() if key[0] == node for edge in edges]
-
+        node = node.lower()  # Zmieniamy na małe litery, by porównanie było niezależne od wielkości liter
+        neighbors = []
+        for (start, end), edges in self.edges.items():
+            if start.lower() == node:  # Zmieniamy na małe litery dla porównania
+                neighbors.extend(edges)
+        return neighbors
 
 def load_data(filename):
     # Wczytujemy plik CSV z odpowiednim nagłówkiem i delimiterem jako przecinek
@@ -61,12 +65,6 @@ def load_data(filename):
     # Usuwamy kolumnę 'Unnamed: 0', która jest niepotrzebna
     if 'Unnamed: 0' in df.columns:
         df.drop(columns=['Unnamed: 0'], inplace=True)
-
-    # Sprawdź, czy kolumna 'departure_time' jest dostępna
-    print("columns: ")
-    print(df.columns)  # Wydrukuj nazwy kolumn
-    print("head: ")
-    print(df.head())  # Wydrukuj pierwsze wiersze danych
 
     if 'departure_time' not in df.columns:
         print("Brak kolumny 'departure_time' w pliku CSV.")
@@ -100,14 +98,14 @@ def heuristic(a, b, graph):
 
 def astar_search(graph, start, goal, start_time):
     open_set = []
-    heapq.heappush(open_set, (0, start, start_time, []))
+    heapq.heappush(open_set, (0, start.lower(), start_time, []))  # Zamiana startu na małe litery
     came_from = {}
-    cost_so_far = {start: 0}
+    cost_so_far = {start.lower(): 0}  # Zamiana startu na małe litery
 
     while open_set:
         _, current, current_time, path = heapq.heappop(open_set)
 
-        if current == goal:
+        if current == goal.lower():  # Zamiana celu na małe litery
             return path
 
         for edge in graph.get_neighbors(current):
@@ -115,11 +113,11 @@ def astar_search(graph, start, goal, start_time):
                 new_cost = cost_so_far[current] + (
                             datetime.combine(datetime.today(), edge.arrival_time) - datetime.combine(datetime.today(),
                                                                                                      edge.leave_time)).seconds / 60
-                if edge.end not in cost_so_far or new_cost < cost_so_far[edge.end]:
-                    cost_so_far[edge.end] = new_cost
+                if edge.end.lower() not in cost_so_far or new_cost < cost_so_far[edge.end.lower()]:
+                    cost_so_far[edge.end.lower()] = new_cost
                     priority = new_cost + heuristic(edge.end, goal, graph)
                     heapq.heappush(open_set, (
-                    priority, edge.end, edge.arrival_time, path + [(edge.line, edge.start, edge.leave_time)]))
+                    priority, edge.end.lower(), edge.arrival_time, path + [(edge.line, edge.start, edge.leave_time)]))
 
     return []
 
@@ -145,12 +143,13 @@ def print_graph_edges(graph):
 
 
 if __name__ == "__main__":
-    # graph = load_data('connection_graph.csv')
-    graph = load_data('testowy.csv')
-    print_graph_edges(graph)
+    graph = load_data('connection_graph.csv')
+    # graph = load_data('testowy.csv')
+    # print_graph_edges(graph)
 
-    start_stop = "Broniewskiego"
-    goal_stop = "Pola"
-    start_time = parse_time("20:58:00")
+    start_stop = "Kwiska"
+    goal_stop = "Pl. Grunwaldzki"
+    start_time = parse_time("08:00:00")
+    # start_time = parse_time("20:58:00")
     path = astar_search(graph, start_stop, goal_stop, start_time)
     display_results(path)
