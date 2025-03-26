@@ -59,12 +59,6 @@ class Graph:
 
         if edge_found_index != -1:
             edge_found = possible_edges[edge_found_index]
-            # print(
-            #     f"🔎 Debug: found edge {edge_found.name} with times {edge_found.leave_time} → {edge_found.arrive_time}")
-
-            # if not isinstance(edge_found.arrive_time, dt.time):
-            #     print("⚠️ ERROR: arrive_time is not a datetime.time object!")
-
             if edge_found.leave_time >= time:
                 return time_diff(edge_found.arrive_time, time), (
                 edge_found.name, edge_found.leave_time, edge_found.arrive_time)
@@ -98,7 +92,6 @@ class PriorityQueue:
 
 
 def safe_convert_time(value):
-
     try:
         return pd.to_datetime(fix_invalid_time(value), format='%H:%M:%S').time()
     except ValueError:
@@ -115,15 +108,6 @@ def fix_invalid_time(time_str):
         return f"{hours:02}:{minutes:02}:{seconds:02}"
     except ValueError:
         return "00:00:00"  # Domyślna wartość w przypadku błędu
-#
-#
-# def parse_time(time_str):
-#     """Konwertuje ciąg znaków na obiekt datetime.time."""
-#     try:
-#         time_str = fix_invalid_time(time_str)
-#         return datetime.strptime(time_str, "%H:%M:%S").time()
-#     except ValueError:
-#         return None
 
 
 def load_data(file):
@@ -134,14 +118,9 @@ def load_data(file):
         encoding='utf-8',
         low_memory=False
     )
-    # df["departure_time"] = df["departure_time"].apply(parse_time)
-    # df["arrival_time"] = df["arrival_time"].apply(parse_time)
 
     df['departure_time'] = df['departure_time'].apply(safe_convert_time)
     df['arrival_time'] = df['arrival_time'].apply(safe_convert_time)
-
-    # df['departure_time'] = pd.to_datetime(df['departure_time'], format='%H:%M:%S').dt.time
-    # df['arrival_time'] = pd.to_datetime(df['arrival_time'], format='%H:%M:%S').dt.time
 
     graph = Graph()
 
@@ -154,10 +133,6 @@ def load_data(file):
         else:
             graph.nodes[start_stop] = [end_stop]
 
-        # #debug
-        # print(f"🔍 Wiersz danych: {row}")
-        # print(f"arrive_time: {row[2]}, leave_time: {row[4]}")
-
         edge = Edge(row[2], row[4], row[3], row[7], row[8], row[9], row[10])
 
         if (start_stop, end_stop) in graph.edges.keys():
@@ -167,8 +142,6 @@ def load_data(file):
 
     for row in graph.edges.values():
         row.sort(key=lambda x: x.leave_time)
-    #debug
-    # print("📌 Wczytane przystanki:", list(graph.nodes.keys()))
 
     return graph
 
@@ -280,14 +253,14 @@ def dijkstra_search(graph, start, goal, time):
                 front.put(neighbour, priority)
                 came_from[neighbour] = cur_stop, cost[1]
                 time_so_far[neighbour] = cost[1][2]
-    print(f"📌 Węzły w came_from: {list(came_from.keys())}")
+    # print(f"📌 Węzły w came_from: {list(came_from.keys())}")
     return came_from, cost_so_far
 
 
 def create_path(came_from, start, goal):
     if goal not in came_from:
-        print(f"⚠️ Nie znaleziono ścieżki do: {goal}")
-        print(f"Znalezione węzły: {list(came_from.keys())}")  # Wypisuje znalezione węzły
+        # print(f"⚠️ Nie znaleziono ścieżki do: {goal}")
+        # print(f"Znalezione węzły: {list(came_from.keys())}")  # Wypisuje znalezione węzły
         return []
 
     current = goal
