@@ -1,3 +1,4 @@
+import sys
 from copy import deepcopy
 import pickle
 import heapq
@@ -149,7 +150,7 @@ def timeit(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
         total_time = end_time - start_time
-        print(f'Function {func.__name__} Took {total_time:.4f} seconds')
+        print(f'Function {func.__name__} Took {total_time:.4f} seconds', file=sys.stderr)
         return result
 
     return timeit_wrapper
@@ -447,6 +448,15 @@ def load_graph(filename):
         graph = pickle.load(file)
     return graph
 
+
+def get_data():
+    while True:
+        start_stop = input("Przystanek początkowy: ")
+        end_stop = input("Przystanek końcowy: ")
+        time = input("Godzina odjazdu HH:MM:SS : ")
+        time_or_stops = input("t - minimalizacja czasu dojazdu, p - minimalizacja liczby przesiadek: ")
+        return start_stop, end_stop, time_or_stops, time
+
 def main():
     graph_filename = "graph_data.pickle"
     try:
@@ -461,9 +471,11 @@ def main():
         print("Graph created and saved to file.")
 
 
+
     print("start searching")
-    start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
-    
+    start, end, time_or_stops, start_time = get_data()
+    # start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
+
     print("------------------------ dijkstra time")
     path_dijkstra = dijkstra(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
     if path_dijkstra != None:
