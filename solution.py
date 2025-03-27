@@ -5,7 +5,6 @@ import datetime
 import time as t
 import geopy.distance
 
-
 def search(arr, low, high, x):
     if high >= low:
         mid = (high + low) // 2
