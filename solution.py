@@ -302,4 +302,5 @@ def dijkstra(graph, start, goal, time):
 if __name__ == "__main__":
     graph = load_data('connection_graph.csv')
     # graph = load_data('testowy.csv')
+    # dijkstra(graph, "bezpieczna", "katedra", datetime.time(10, 00))
     dijkstra(graph, "kwiska", "pl. grunwaldzki", datetime.time(10, 00))
