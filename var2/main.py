@@ -95,7 +95,6 @@ def create_graph(filename: str):
                          , "start_stop": str, "end_stop": str, "start_stop_lat": float, "start_stop_lon": float,
                             "end_stop_lat": float, "end_stop_lon": float})
     df.sort_values(['line', 'departure_time', 'start_stop'])
-    # print(df["line"],df["departure_time"],df['start_stop'])
 
     nodes_created = 0
     nodes_count = 0
@@ -216,7 +215,7 @@ def astar_search(graph, start, goal, cost_fn, start_time):
 
 # obliczanie heurystyki, euklidesowa
 def h(curr: Node, next: Node):
-    return math.sqrt((curr.geo_info.latitiude - next.geo_info.latitiude) ** 2 + abs(
+    return math.sqrt((curr.geo_info.latitiude - next.geo_info.latitiude) ** 2 + (
         curr.geo_info.longitude - next.geo_info.longitude) ** 2)
 
 
@@ -235,7 +234,7 @@ def cost_fun_for_time(curr: Node, next: Node, s_time: TimeInformation, prev_line
     posible_comutes = list()
     # mozliwe polaczenia z curr do next
     for edge in curr.edges:
-        if (edge.end_stop == next.geo_info.name):
+        if edge.end_stop == next.geo_info.name:
             posible_comutes.append(edge)
 
     cost = float('inf')
@@ -307,28 +306,6 @@ def calculate_distance_cost(curr: Node, next: Node):
     return distance
 
 
-# def cost_fun_for_swich(curr: Node, next: Node, s_time: TimeInformation, prev_line: str):
-#     posible_comutes = list()
-#     for edge in curr.edges:
-#         if edge.end_stop == next.geo_info.name:
-#             posible_comutes.append(edge)
-#     cost = float('inf')
-#     ret_edge: EdgeInformation
-#     ret_edge = None
-#     swich_multiplyer = 10000
-#     for edge in posible_comutes:
-#         if edge.line != prev_line:
-#             mult = swich_multiplyer
-#         else:
-#             mult = 0
-
-#         if mult < cost:  # Nie dodajemy tu czasu, bo patrzymy tylko na przesiadki
-#             cost = mult
-#             ret_edge = edge
-#     return cost, ret_edge
-
-
-# @astar.timeit
 @timeit
 def dijkstra(graph, start, goal, cost_fn, start_time):
     # convert start_time to TimeInformation object
@@ -416,26 +393,30 @@ def find_edge_to_goal(node: Node, end: str, time: TimeInformation):
 def path_with_information(node_list: list[Node], tim: str):
     time = TimeInformation(tim)
     last_stop = None
-    num_changes = 0  # Licznik przesiadek
+    num_changes = 0
     prev_line = None
+    total_cost = 0  # Zmienna przechowująca koszt całkowity
+
     for x in range(0, len(node_list)-1):
         edge = find_edge_to_goal(node_list[x], node_list[x+1].geo_info.name, time)
-        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} by {edge.line} in {edge.arrival_time.minAfterOO - edge.departure_time.minAfterOO} minutes")
+        travel_time = edge.arrival_time.minAfterOO - edge.departure_time.minAfterOO
+        total_cost += travel_time  # Sumowanie kosztu
+        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} by {edge.line} in {travel_time} minutes")
         time = edge.arrival_time
         last_stop = node_list[x+1].geo_info.name
 
-        if prev_line != edge.line:  # Jeśli linia się zmieniła, zwiększ liczbę przesiadek
+        if prev_line != edge.line:
             num_changes += 1
         prev_line = edge.line
-       
 
-    print(f"Arrival time at {last_stop}: {time}")
     time_temp = time.minAfterOO
     total_travel_time = time.minAfterOO - TimeInformation(tim).minAfterOO
     if total_travel_time < 0:
         time_temp += 24 * 60  # Dodajemy 24 godziny w minutach
     total_travel_time = time_temp - TimeInformation(tim).minAfterOO
     print(f"Total time: {total_travel_time} minutes")
+
+    print(f"Total travel cost: {total_cost} minutes", file=sys.stderr)  # Wypisanie na stderr
     print(f"Number of changes: {num_changes}")
 
 
@@ -471,10 +452,10 @@ def main():
         print("Graph created and saved to file.")
 
 
-
     print("start searching")
-    start, end, time_or_stops, start_time = get_data()
-    # start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
+    # start, end, time_or_stops, start_time = get_data()
+    start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
+    # start, end, start_time= "Zajezdnia Obornicka", "PORT LOTNICZY", "20:50:00"
 
     print("------------------------ dijkstra time")
     path_dijkstra = dijkstra(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
