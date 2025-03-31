@@ -506,5 +506,4 @@ def main():
         print("no path found")
 
 if __name__ == "__main__":
-    print(correct_time_format("25:01:01"))
-    # main()
+    main()
