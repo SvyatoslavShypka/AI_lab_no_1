@@ -86,6 +86,16 @@ class Node:
         return edg.arrival_time.minAfterOO - edg.departure_time.minAfterOO
 
 
+# Funkcja do konwersji godziny 24 na 00
+def correct_time_format(time_str):
+    hour = int(time_str[0:2])
+    if hour > 23:
+        hour -= 24
+        time_str = str(hour).zfill(2) + time_str[2:]
+    return time_str
+
+
+
 def create_graph(filename: str):
     graph: dict[str, Node]
     graph = {}
@@ -95,6 +105,9 @@ def create_graph(filename: str):
                          , "start_stop": str, "end_stop": str, "start_stop_lat": float, "start_stop_lon": float,
                             "end_stop_lat": float, "end_stop_lon": float})
     df.sort_values(['line', 'departure_time', 'start_stop'])
+    # Zastosowanie poprawki na kolumnie
+    df['departure_time'] = df['departure_time'].apply(correct_time_format)
+    df["arrival_time"] = df["arrival_time"].apply(correct_time_format)
 
     nodes_created = 0
     nodes_count = 0
@@ -447,6 +460,7 @@ def main():
     except FileNotFoundError:
         # Jeśli plik nie istnieje, stwórz nowy graf
         graph = create_graph("connection_graph.csv")
+        # graph = create_graph("test16-18.csv")
         # Zapisz graf do pliku
         save_graph(graph, graph_filename)
         print("Graph created and saved to file.")
@@ -454,11 +468,13 @@ def main():
 
     print("start searching")
     # start, end, time_or_stops, start_time = get_data()
-    start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
+    # start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
+    start, end, start_time= "Renoma", "PORT LOTNICZY", "16:48:00"
     # start, end, start_time= "Zajezdnia Obornicka", "PORT LOTNICZY", "20:50:00"
 
     print("------------------------ dijkstra time")
-    path_dijkstra = dijkstra(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
+    # path_dijkstra = dijkstra(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
+    path_dijkstra = dijkstra(graph, start, end, cost_fun_for_time, start_time)
     if path_dijkstra != None:
         list_ = read_path(path_dijkstra, end)
         path_with_information(list_, start_time)
@@ -490,4 +506,5 @@ def main():
         print("no path found")
 
 if __name__ == "__main__":
-    main()
+    print(correct_time_format("25:01:01"))
+    # main()
