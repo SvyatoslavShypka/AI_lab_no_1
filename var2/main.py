@@ -25,7 +25,7 @@ class TimeInformation:
         self.minAfterOO = self.hour * 60 + self.minute
 
     def __str__(self):
-        return str(self.hour) + ":" + str(self.minute) + ":00"
+        return str(self.hour).zfill(2) + ":" + str(self.minute).zfill(2) + ":00"
 
     def __lt__(self, other):
         return self.minAfterOO < other.minAfterOO
@@ -93,7 +93,6 @@ def correct_time_format(time_str):
         hour -= 24
         time_str = str(hour).zfill(2) + time_str[2:]
     return time_str
-
 
 
 def create_graph(filename: str):
@@ -255,7 +254,7 @@ def cost_fun_for_time(curr: Node, next: Node, s_time: TimeInformation, prev_line
     ret_edge = None
     # znajduje krawedz o min koszcie
     for edge in posible_comutes:
-        time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO;
+        time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO
         if time_diff < 0:
             time_diff += 24 * 60
         if time_diff < cost:
@@ -280,7 +279,7 @@ def cost_fun_for_switch(curr: Node, next: Node, s_time: TimeInformation, prev_li
         else:
             mult = 0
 
-        time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO;
+        time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO
         if time_diff < 0:
             time_diff += 24 * 60
         if time_diff < cost:
@@ -351,7 +350,7 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
         if current_name == goal:
             return graph
 
-        if chosen_edge == None:
+        if chosen_edge is None:
             tim = start_time
             prev_line = ""
         else:
@@ -413,8 +412,10 @@ def path_with_information(node_list: list[Node], tim: str):
     for x in range(0, len(node_list)-1):
         edge = find_edge_to_goal(node_list[x], node_list[x+1].geo_info.name, time)
         travel_time = edge.arrival_time.minAfterOO - edge.departure_time.minAfterOO
-        total_cost += travel_time  # Sumowanie kosztu
-        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} by {edge.line} in {travel_time} minutes")
+        waiting_time = edge.departure_time.minAfterOO - time.minAfterOO
+        print(f"Waiting time {waiting_time}")
+        total_cost += (travel_time + waiting_time)  # Sumowanie kosztu
+        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} until {edge.arrival_time} by {edge.line}. Travel time: {travel_time} minutes, total travel time: {total_cost}")
         time = edge.arrival_time
         last_stop = node_list[x+1].geo_info.name
 
@@ -475,7 +476,7 @@ def main():
     print("------------------------ dijkstra time")
     # path_dijkstra = dijkstra(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
     path_dijkstra = dijkstra(graph, start, end, cost_fun_for_time, start_time)
-    if path_dijkstra != None:
+    if path_dijkstra is not None:
         list_ = read_path(path_dijkstra, end)
         path_with_information(list_, start_time)
     else:
