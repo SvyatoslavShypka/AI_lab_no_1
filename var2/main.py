@@ -95,6 +95,24 @@ def correct_time_format(time_str):
     return time_str
 
 
+def stop_search(graph, stop: str):
+    stop_name = "DWORZEC GŁÓWNY"  # Nazwa przystanku, dla którego chcesz zobaczyć dane
+    if stop_name in graph:
+        node = graph[stop_name]
+        print(f"\nDane dla przystanku: {stop_name}")
+        print(f" - Nazwa: {node.geo_info.name}")
+        print(f" - Szerokość geograficzna: {node.geo_info.latitiude}")
+        print(f" - Długość geograficzna: {node.geo_info.longitude}")
+        print(f" - Liczba krawędzi (połączeń): {len(node.edges)}")
+
+        print("\nLista połączeń:")
+        for edge in node.edges:
+            print(f"   Linia: {edge.line}, Odjazd: {edge.departure_time}, Przyjazd: {edge.arrival_time}, "
+                  f"Do: {edge.end_stop}")
+    else:
+        print(f"\nPrzystanek '{stop_name}' nie został znaleziony w grafie.")
+
+
 def create_graph(filename: str):
     graph: dict[str, Node]
     graph = {}
@@ -151,6 +169,11 @@ def create_graph(filename: str):
             print(f"{nodes_created} nodes created")
         nodes_count = nodes_created
     print(f"{nodes_created} nodes created totally")
+
+    #debug
+    stop_name = "DWORZEC GŁÓWNY"
+    stop_search(graph, stop_name)
+
     return graph
 
 
@@ -243,22 +266,24 @@ def neighbours(graph: dict[str, Node], start: Node, time: TimeInformation):
 
 # koszt przejazdu z jednego wezla do drugiego
 def cost_fun_for_time(curr: Node, next: Node, s_time: TimeInformation, prev_line: str):
-    posible_comutes = list()
+    possible_commutes = list()
     # mozliwe polaczenia z curr do next
     for edge in curr.edges:
         if edge.end_stop == next.geo_info.name:
-            posible_comutes.append(edge)
+            possible_commutes.append(edge)
 
     cost = float('inf')
     ret_edge: EdgeInformation
     ret_edge = None
     # znajduje krawedz o min koszcie
-    for edge in posible_comutes:
+    for edge in possible_commutes:
         time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO
         if time_diff < 0:
             time_diff += 24 * 60
         if time_diff < cost:
             cost = time_diff
+            if cost < 0:
+                print(s_time.minAfterOO, time_diff, edge.departure_time.minAfterOO, edge.departure_time, s_time)
             ret_edge = edge
 
     return cost, ret_edge
@@ -322,8 +347,7 @@ def calculate_distance_cost(curr: Node, next: Node):
 def dijkstra(graph, start, goal, cost_fn, start_time):
     # convert start_time to TimeInformation object
     start_time = TimeInformation(start_time)
-
-    # tart node
+    # Start node
     start_node = graph[start]
     start_node.g = 0
     graph[start] = start_node
@@ -348,7 +372,7 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
         visited.add(current_name)
         # check if the current node is the goal node
         if current_name == goal:
-            return graph
+            return graph #Correct exit when the route was found
 
         if chosen_edge is None:
             tim = start_time
@@ -356,19 +380,22 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
         else:
             tim = chosen_edge.arrival_time
             prev_line = chosen_edge.line
-
+        if chosen_edge is not None and chosen_edge.arrival_time.minAfterOO > 1440:
+            print(chosen_edge.arrival_time.minAfterOO, chosen_edge.arrival_time, chosen_edge.start_stop)
         # explore the neighbors of the current node
         for next_node in neighbours(graph, current_node, tim):
             # calculate the cost of moving to the next node
             cost_fn_res, chosen_edge = cost_fn(current_node, next_node, tim, prev_line)
+            if cost_fn_res < 0:
+                print(f'cost_fn_res: {cost_fn_res}')
             new_cost = current_node.g + cost_fn_res
 
             # update the cost of the next node if a shorter path is found
             if next_node.geo_info.name not in visited and new_cost < graph[next_node.geo_info.name].g:
                 graph[next_node.geo_info.name].g = new_cost
+                # print(f'{next_node.geo_info.name} g.cost= {new_cost}')
                 graph[next_node.geo_info.name].parent_name = current_name
                 heapq.heappush(priority_queue, (new_cost, next_node.geo_info.name))
-
     return None
 
 
