@@ -21,6 +21,7 @@ class TimeInformation:
     minAfterOO: int
 
     def __init__(self, str: str):
+        correct_time_format(str)
         self.hour, self.minute = int(str[0:2]), int(str[3:5])
         self.minAfterOO = self.hour * 60 + self.minute
 
@@ -272,20 +273,26 @@ def cost_fun_for_time(curr: Node, next: Node, s_time: TimeInformation, prev_line
         if edge.end_stop == next.geo_info.name:
             possible_commutes.append(edge)
 
+    #zakładamy 1 min na przesiadkę
+    przesiadka = 3
     cost = float('inf')
     ret_edge: EdgeInformation
     ret_edge = None
     # znajduje krawedz o min koszcie
     for edge in possible_commutes:
+        # Jeżeli ta sama linia, nie potrzebujemy przesiadki (=0 min)
+        if edge.line == '' or edge.line == prev_line or prev_line == '':
+            przesiadka = 0
         time_diff = edge.departure_time.minAfterOO - s_time.minAfterOO
         if time_diff < 0:
             time_diff += 24 * 60
-        if time_diff < cost:
-            cost = time_diff
-            if cost < 0:
-                print(s_time.minAfterOO, time_diff, edge.departure_time.minAfterOO, edge.departure_time, s_time)
+        if time_diff + przesiadka < cost:
+            cost = time_diff + przesiadka
             ret_edge = edge
+            # print(f'Start time {edge.departure_time} To {edge.end_stop} by line {edge.line} with cost {cost}')
+        przesiadka = 3
 
+    print(f'Returned {ret_edge.end_stop} with start time {ret_edge.departure_time} by line {ret_edge.line} with cost {cost}')
     return cost, ret_edge
 
 
@@ -346,7 +353,7 @@ def calculate_distance_cost(curr: Node, next: Node):
 @timeit
 def dijkstra(graph, start, goal, cost_fn, start_time):
     # convert start_time to TimeInformation object
-    start_time = TimeInformation(start_time)
+    # start_time = TimeInformation(start_time)
     # Start node
     start_node = graph[start]
     start_node.g = 0
@@ -364,6 +371,8 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
     while priority_queue:
         # node with the lowest cost from the priority queue
         cost, current_name = heapq.heappop(priority_queue)
+        print(f"Przetwarzam przystanek: {current_name}, czas: {cost}")
+
         current_node = graph[current_name]
 
         if current_name in visited:
@@ -380,8 +389,8 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
         else:
             tim = chosen_edge.arrival_time
             prev_line = chosen_edge.line
-        if chosen_edge is not None and chosen_edge.arrival_time.minAfterOO > 1440:
-            print(chosen_edge.arrival_time.minAfterOO, chosen_edge.arrival_time, chosen_edge.start_stop)
+        # if chosen_edge is not None and chosen_edge.arrival_time.minAfterOO > 1440:
+        #     print(chosen_edge.arrival_time.minAfterOO, chosen_edge.arrival_time, chosen_edge.start_stop)
         # explore the neighbors of the current node
         for next_node in neighbours(graph, current_node, tim):
             # calculate the cost of moving to the next node
@@ -391,7 +400,8 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
             new_cost = current_node.g + cost_fn_res
 
             # update the cost of the next node if a shorter path is found
-            if next_node.geo_info.name not in visited and new_cost < graph[next_node.geo_info.name].g:
+            # if next_node.geo_info.name not in visited and new_cost < graph[next_node.geo_info.name].g:
+            if new_cost < graph[next_node.geo_info.name].g:
                 graph[next_node.geo_info.name].g = new_cost
                 # print(f'{next_node.geo_info.name} g.cost= {new_cost}')
                 graph[next_node.geo_info.name].parent_name = current_name
@@ -429,8 +439,8 @@ def find_edge_to_goal(node: Node, end: str, time: TimeInformation):
 
 
 #przejscie po wezlach i odczytanie czasu z krawedzi
-def path_with_information(node_list: list[Node], tim: str):
-    time = TimeInformation(tim)
+def path_with_information(node_list: list[Node], time):
+    # time = TimeInformation(tim)
     last_stop = None
     num_changes = 0
     prev_line = None
@@ -451,10 +461,12 @@ def path_with_information(node_list: list[Node], tim: str):
         prev_line = edge.line
 
     time_temp = time.minAfterOO
-    total_travel_time = time.minAfterOO - TimeInformation(tim).minAfterOO
+    # total_travel_time = time.minAfterOO - TimeInformation(tim).minAfterOO
+    total_travel_time = time.minAfterOO - time.minAfterOO
     if total_travel_time < 0:
         time_temp += 24 * 60  # Dodajemy 24 godziny w minutach
-    total_travel_time = time_temp - TimeInformation(tim).minAfterOO
+    # total_travel_time = time_temp - TimeInformation(tim).minAfterOO
+    total_travel_time = time_temp - time.minAfterOO
     print(f"Total time: {total_travel_time} minutes")
 
     print(f"Total travel cost: {total_cost} minutes", file=sys.stderr)  # Wypisanie na stderr
@@ -497,7 +509,7 @@ def main():
     print("start searching")
     # start, end, time_or_stops, start_time = get_data()
     # start, end, start_time= "KROMERA", "Solskiego", "10:14:00"
-    start, end, start_time= "Renoma", "PORT LOTNICZY", "16:48:00"
+    start, end, start_time= "Renoma", "PORT LOTNICZY", TimeInformation("16:48:00")
     # start, end, start_time= "Zajezdnia Obornicka", "PORT LOTNICZY", "20:50:00"
 
     print("------------------------ dijkstra time")
@@ -509,29 +521,29 @@ def main():
     else:
         print("no path found")
 
-    print("------------------------ astar time")
-    path_astar = astar_search(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
-    if path_astar != None:
-        list_ = read_path(path_astar, end)
-        path_with_information(list_, start_time)
-    else:
-        print("no path found")
-    
-    print("------------------------ astar switch")
-    path_astar = astar_search(load_graph(graph_filename), start, end , cost_fun_for_switch, start_time )
-    if path_astar != None:
-        list_ = read_path(path_astar, end)
-        path_with_information(list_, start_time)
-    else:
-        print("no path found")
- 
-    print("------------------------ astar modified")
-    path_astar = astar_search(load_graph(graph_filename), start, end , cost_fun_for_switch_modified, start_time )
-    if path_astar != None:
-        list_ = read_path(path_astar, end)
-        path_with_information(list_, start_time)
-    else:
-        print("no path found")
+    # print("------------------------ astar time")
+    # path_astar = astar_search(load_graph(graph_filename), start, end, cost_fun_for_time, start_time )
+    # if path_astar != None:
+    #     list_ = read_path(path_astar, end)
+    #     path_with_information(list_, start_time)
+    # else:
+    #     print("no path found")
+    #
+    # print("------------------------ astar switch")
+    # path_astar = astar_search(load_graph(graph_filename), start, end , cost_fun_for_switch, start_time )
+    # if path_astar is not None:
+    #     list_ = read_path(path_astar, end)
+    #     path_with_information(list_, start_time)
+    # else:
+    #     print("no path found")
+    #
+    # print("------------------------ astar modified")
+    # path_astar = astar_search(load_graph(graph_filename), start, end , cost_fun_for_switch_modified, start_time )
+    # if path_astar is not None:
+    #     list_ = read_path(path_astar, end)
+    #     path_with_information(list_, start_time)
+    # else:
+    #     print("no path found")
 
 if __name__ == "__main__":
     main()
