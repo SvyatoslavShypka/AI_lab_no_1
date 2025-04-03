@@ -292,7 +292,7 @@ def cost_fun_for_time(curr: Node, next: Node, s_time: TimeInformation, prev_line
             # print(f'Start time {edge.departure_time} To {edge.end_stop} by line {edge.line} with cost {cost}')
         przesiadka = 3
 
-    print(f'Returned {ret_edge.end_stop} with start time {ret_edge.departure_time} by line {ret_edge.line} with cost {cost}')
+    print(f'Returned {ret_edge.end_stop} with start time {ret_edge.departure_time} and stop time {ret_edge.arrival_time} by line {ret_edge.line} with cost {cost}')
     return cost, ret_edge
 
 
@@ -371,7 +371,7 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
     while priority_queue:
         # node with the lowest cost from the priority queue
         cost, current_name = heapq.heappop(priority_queue)
-        print(f"Przetwarzam przystanek: {current_name}, czas: {cost}")
+        print(f"Przetwarzam przystanek: {current_name}, koszt: {cost}")
 
         current_node = graph[current_name]
 
@@ -392,11 +392,12 @@ def dijkstra(graph, start, goal, cost_fn, start_time):
         # if chosen_edge is not None and chosen_edge.arrival_time.minAfterOO > 1440:
         #     print(chosen_edge.arrival_time.minAfterOO, chosen_edge.arrival_time, chosen_edge.start_stop)
         # explore the neighbors of the current node
-        for next_node in neighbours(graph, current_node, tim):
+        all_neighbours = neighbours(graph, current_node, tim)
+        for next_node in all_neighbours:
             # calculate the cost of moving to the next node
             cost_fn_res, chosen_edge = cost_fn(current_node, next_node, tim, prev_line)
-            if cost_fn_res < 0:
-                print(f'cost_fn_res: {cost_fn_res}')
+            # if cost_fn_res < 0:
+            #     print(f'cost_fn_res: {cost_fn_res}')
             new_cost = current_node.g + cost_fn_res
 
             # update the cost of the next node if a shorter path is found
@@ -452,7 +453,7 @@ def path_with_information(node_list: list[Node], time):
         waiting_time = edge.departure_time.minAfterOO - time.minAfterOO
         print(f"Waiting time {waiting_time}")
         total_cost += (travel_time + waiting_time)  # Sumowanie kosztu
-        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} until {edge.arrival_time} by {edge.line}. Travel time: {travel_time} minutes, total travel time: {total_cost}")
+        print(f"From {node_list[x].geo_info.name} to {node_list[x+1].geo_info.name} at {edge.departure_time} until {edge.arrival_time} by {edge.line}. Travel time: {travel_time} minutes, total travel time: {total_cost}, koszt: {node_list[x+1].g}")
         time = edge.arrival_time
         last_stop = node_list[x+1].geo_info.name
 
