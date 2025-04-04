@@ -493,7 +493,7 @@ def get_data():
         return start_stop, end_stop, time_or_stops, time
 
 def main():
-    graph_filename = "graph_data.pickle"
+    graph_filename = "_graph_data.pickle"
     try:
         # Spróbuj wczytać zapisany graf
         graph = load_graph(graph_filename)
